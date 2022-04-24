@@ -502,12 +502,12 @@ void App::CreateCalculatorWindowElements() {
 
     /* output window */
     {
+        wchar_t ostr[9999] = {};
         if (output_window) {
-            wchar_t ostr[9999] = {};
             GetWindowText(output_window, ostr, 9999);
             DestroyWindow(output_window);
         }
-        output_window = CreateWindowEx(NULL, L"EDIT", str, WS_VISIBLE | WS_CHILD | WS_BORDER | ES_NUMBER,
+        output_window = CreateWindowEx(NULL, L"STATIC", ostr, WS_VISIBLE | WS_CHILD | SS_LEFT | WS_BORDER,
             current_horizontal_offset + horizontal_spacing, current_vertical_offset + vertical_spacing,
             calculator_client_width - current_horizontal_offset, calculator_client_height - current_vertical_offset,
             calculator_window, NULL, GetModuleHandle(NULL), NULL);
