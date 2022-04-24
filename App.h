@@ -15,15 +15,9 @@ private:
 	void	OnDestroy();
 
 #pragma region Settings
-	#pragma region Current
-	bool using_wireframe;
-	#pragma endregion
+	//void LoadConfigFile(string fname); //future feature
+	bool using_wireframe = false;
 
-	#pragma region Default
-	bool def_using_wireframe = false;
-	
-
-	#pragma endregion
 #pragma endregion
 
 #pragma region FileIO
