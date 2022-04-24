@@ -9,3 +9,16 @@ App::App() :
 {
 	self = this;
 }
+
+void App::OnInit() {
+	InitWindows();
+	InitDX12();
+}
+
+void App::InitWindows() {
+
+}
+
+void App::InitDX12() {
+
+}

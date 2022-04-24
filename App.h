@@ -28,8 +28,12 @@ private:
 	static App* self;
 	static LRESULT CallOnEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam);
 
+	
+	void InitWindows();
 	HWND calculator_window;
 	HWND visualizer_window;
+
+	
 
 	#pragma region EventHandlers
 
@@ -47,7 +51,7 @@ private:
 #pragma endregion
 
 #pragma region DirectX12
-	
+		void InitDX12();
 #pragma endregion
 
 #pragma region Math
