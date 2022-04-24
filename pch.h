@@ -12,5 +12,12 @@
 #include <windows.h>
 #include <windowsx.h>
 
+#include<d3d12.h>
+#include<dxgi1_6.h>
+#include<d3dcompiler.h>
+#include<DirectXMath.h>
+#include<DirectXCollision.h>
+#include<DirectXColors.h>
+#include<wrl.h>
 
 #endif //PCH_H
