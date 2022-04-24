@@ -1,0 +1,110 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (United States) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""winres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MENU1 MENU
+BEGIN
+    POPUP "File"
+    BEGIN
+        MENUITEM "New",                         ID_FILE_OPENFILE
+        MENUITEM "Open",                        ID_FILE_SAVE
+        MENUITEM "Save",                        ID_FILE_SAVE40003
+        MENUITEM "Save As",                     ID_FILE_SAVEAS
+    END
+    POPUP "Analysis"
+    BEGIN
+        MENUITEM "Surface Area",                ID_ANALYSIS_SURFACEAREA, CHECKED
+        MENUITEM "Volume",                      ID_ANALYSIS_VOLUME, CHECKED
+    END
+    POPUP "Data"
+    BEGIN
+        MENUITEM "Export .csv",                 ID_DATA_EXPORT
+    END
+    POPUP "View"
+    BEGIN
+        MENUITEM "Auto Centering",              ID_VIEW_AUTOCENTERING, CHECKED
+        MENUITEM "Auto Scaling",                ID_VIEW_AUTOSCALING, CHECKED
+        MENUITEM "Auto Zooming",                ID_VIEW_AUTOZOOMING, CHECKED
+        MENUITEM "Center",                      ID_VIEW_CENTER
+        MENUITEM "Scale",                       ID_VIEW_SCALE
+        MENUITEM "Zoom",                        ID_VIEW_ZOOM
+    END
+    POPUP "Rendering"
+    BEGIN
+        MENUITEM "WireFrame",                   ID_RENDERING_WIREFRAME, CHECKED
+    END
+    POPUP "Help"
+    BEGIN
+        MENUITEM "About",                       ID_HELP_ABOUT
+        MENUITEM "Hotkeys",                     ID_HELP_HOTKEYS
+    END
+    POPUP "DEMO"
+    BEGIN
+        MENUITEM "Stress Test",                 ID_DEMO_STRESSTEST
+        MENUITEM "Animations",                  ID_DEMO_ANIMATIONS
+    END
+END
+
+#endif    // English (United States) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

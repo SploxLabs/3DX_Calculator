@@ -7,7 +7,10 @@
 #ifndef PCH_H
 #define PCH_H
 
-// add headers that you want to pre-compile here
+#include "resource.h"
+
+#include<stdexcept>
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <windowsx.h>
@@ -19,5 +22,7 @@
 #include<DirectXCollision.h>
 #include<DirectXColors.h>
 #include<wrl.h>
+
+
 
 #endif //PCH_H

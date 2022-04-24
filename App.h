@@ -9,7 +9,8 @@ public:
 	void	End();
 private:
 	void	OnInit();
-	LRESULT	OnEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam);
+	LRESULT	OnCalculatorWindowEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam);
+	LRESULT OnVisualizerWindowEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam);
 	void	OnUpdate();
 	void	OnRender();
 	void	OnDestroy();
@@ -26,8 +27,8 @@ private:
 
 #pragma region Win32
 	static App* self;
-	static LRESULT CallOnEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam);
-
+	static LRESULT CallOnCalculatorWindowEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam);
+	static LRESULT CallOnVisualizerWindowEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam);
 	
 	void InitWindows();
 	HWND calculator_window;

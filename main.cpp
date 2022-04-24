@@ -1,6 +1,8 @@
 #include "pch.h"
+#include "App.h"
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
-	
-	return 0;
+	App testme;
+
+	return testme.Start();
 }

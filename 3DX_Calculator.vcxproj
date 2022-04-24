@@ -149,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -159,6 +160,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="App.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="3DX_Calculator.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
