@@ -25,6 +25,10 @@
 #define ID_DEMO_STRESSTEST              40020
 #define ID_DEMO_ANIMATIONS              40021
 
+#define ID_SELECT_POINT1                41000
+#define ID_SELECT_POINT2                41001
+#define ID_REVALUATE		            41002
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

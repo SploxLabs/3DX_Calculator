@@ -33,19 +33,24 @@ private:
 	void InitWindows();
 	
 	#pragma region VisualizerWindow
+	void OnVizualizerWindowResize();
+
 	HWND visualizer_window;
+
+	bool visualizer_window_paused;
 	#pragma endregion
 	
 
 	#pragma region CalculatorWindow
 	HWND calculator_window;
-
+	bool calculator_window_paused;
 		#pragma region CalculatorWindowElements
+		//creates or recreates window elements to the calculator window's current dimension
 		void CreateCalculatorWindowElements();
-		UINT vertical_spacing;
-		UINT horizontal_spacing;
-		UINT element_height;
 
+		HWND function_label;
+		HWND function_edit_box;
+		
 		HWND xmin_label;
 		HWND xmin_edit_box;
 		HWND xmax_label;
@@ -59,14 +64,23 @@ private:
 		HWND xresolution_label;
 		HWND xresolution_edit_box;
 
-		HWND xresolution_label;
-		HWND xresolution_edit_box;
+		HWND yresolution_label;
+		HWND yresolution_edit_box;
 
 		HWND point1_label;
+		HWND point1_information_box;
 		HWND point1_selection_box; //we want to switch cursor and begin tracking mouse clicks for hit detection
+		
 		HWND point2_label;
+		HWND point2_information_box;
 		HWND point2_selection_box; //we want to switch cursor and begin tracking mouse clicks for hit detection
 
+		HWND select_point1_button;
+		HWND select_point2_button;
+
+		HWND apply_changes_button;
+
+		HWND output_window;
 		#pragma endregion
 
 
@@ -92,6 +106,14 @@ private:
 #pragma endregion
 
 #pragma region Math
+		bool point1_selected;
+		double point1_x;
+		double point1_y;
+		double point1_z;
 
+		bool point2_selected;
+		double point2_x;
+		double point2_y;
+		double point2_z;
 #pragma endregion
 };
