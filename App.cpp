@@ -537,9 +537,176 @@ void App::InitDX12() {
     RecreateTransformedObjectIndexBuffersFor(test_triangle_indicies);
     RecreateTransformObjectConstantBuffersFor(test_triangle_transformation_datas);
 
+    InitCamera();
 }
 
 void App::InitDeviceAndCoreObjs() {
+    /* Enable Debug Layer and Create Factory*/
+    UINT factory_flag;
+#ifdef _DEBUG
+    factory_flag = DXGI_CREATE_FACTORY_DEBUG;
+    ComPtr<ID3D12Debug> debug;
+    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)))) {
+        debug->EnableDebugLayer();
+    }
+    else {
+        TIF(S_FALSE);
+    }
+#else
+    factory_flag = 0;
+#endif 
+    TIF(CreateDXGIFactory2(factory_flag, IID_PPV_ARGS(&factory)));
+
+    /* Create Device */
+    TIF(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&device)));
+    rtv_inc_size = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    cbv_srv_uav_inc_size = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    
+    /* Create Synchornization Objs */
+    TIF(device->CreateFence(fence_values[current_frame_index], D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+    fence_values[current_frame_index]++;
+
+    // Create an event handle to use for frame synchronization.
+    fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    if (fence_event == nullptr) {
+        TIF(HRESULT_FROM_WIN32(GetLastError()));
+    }
+
+    /* Create Command Queue */
+    D3D12_COMMAND_QUEUE_DESC command_queue_desc;
+    command_queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    command_queue_desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    command_queue_desc.NodeMask = 0;
+    command_queue_desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+    TIF(device->CreateCommandQueue(&command_queue_desc, IID_PPV_ARGS(&command_queue)));
+
+}
+
+void App::InitSwapChain() {
+    /* Create Swap Chain for vizualizer window */
+    RECT vizualizer_window_client_rect;
+    GetClientRect(visualizer_window, &vizualizer_window_client_rect);
+    UINT vizualizer_window_client_width = vizualizer_window_client_rect.right - vizualizer_window_client_rect.left;
+    UINT vizualizer_window_client_height = vizualizer_window_client_rect.bottom - vizualizer_window_client_rect.top;
+
+    DXGI_SWAP_CHAIN_DESC1 swap_chain_desc = {};
+    swap_chain_desc.Width = vizualizer_window_client_width;
+    swap_chain_desc.Height = vizualizer_window_client_height;
+    swap_chain_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swap_chain_desc.Stereo;
+    swap_chain_desc.SampleDesc.Count = 1;
+    swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swap_chain_desc.BufferCount = frame_buffer_count;
+    swap_chain_desc.Scaling;
+    swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swap_chain_desc.AlphaMode;
+    swap_chain_desc.Flags;
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC swap_chain_fullscreen_desc = {};
+    swap_chain_fullscreen_desc.RefreshRate.Numerator = 60;
+    swap_chain_fullscreen_desc.RefreshRate.Denominator = 1;
+    swap_chain_fullscreen_desc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+    swap_chain_fullscreen_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+    swap_chain_fullscreen_desc.Windowed = true;
+    ComPtr<IDXGISwapChain1> swap_chain_tmp;
+    TIF(factory->CreateSwapChainForHwnd(
+        command_queue.Get(),
+        visualizer_window,
+        &swap_chain_desc,
+        &swap_chain_fullscreen_desc,
+        nullptr,
+        &swap_chain_tmp));
+    TIF(swap_chain_tmp.As(&swap_chain));
+
+    /* Create Render Target Heap */
+    D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc = {};
+    rtv_heap_desc.NumDescriptors = frame_buffer_count;
+    rtv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    rtv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    TIF(device->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(&rtv_heap)));
+    
+    /* Create Back Buffers */
+    for (int i = 0; i < frame_buffer_count; i++) {
+        TIF(swap_chain->GetBuffer(i, IID_PPV_ARGS(&back_buffers[i])));
+    }
+
+    /* Create MSAA back buffers and store views in rtv heap*/
+    D3D12_RESOURCE_DESC msaa_resource_desc;
+    msaa_resource_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    msaa_resource_desc.Alignment = 0;
+    msaa_resource_desc.Width = vizualizer_window_client_width; //Buffer size in bytes
+    msaa_resource_desc.Height = vizualizer_window_client_height;
+    msaa_resource_desc.DepthOrArraySize = 1;
+    msaa_resource_desc.MipLevels = 1;
+    msaa_resource_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    msaa_resource_desc.SampleDesc.Count = 4;
+    msaa_resource_desc.SampleDesc.Quality = 0;
+    msaa_resource_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    msaa_resource_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    D3D12_CLEAR_VALUE clear_value;
+    clear_value.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    clear_value.Color[0] = background_color[0];
+    clear_value.Color[1] = background_color[0];
+    clear_value.Color[2] = background_color[0];
+    clear_value.Color[3] = background_color[1];
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(rtv_heap->GetCPUDescriptorHandleForHeapStart());
+    for (int i = 0; i < frame_buffer_count; i++) {
+        TIF(device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+            D3D12_HEAP_FLAG_NONE,
+            &msaa_resource_desc,
+            D3D12_RESOURCE_STATE_COPY_SOURCE,
+            &clear_value,
+            IID_PPV_ARGS(&msaa_back_buffers[i])));
+
+        device->CreateRenderTargetView(msaa_back_buffers[i].Get(), nullptr, rtv_handle);
+
+        rtv_handle.Offset(1, rtv_inc_size);
+    }
+
+    /* Create Depth Stencil Resources */
+    /* Create Depth Stencil View Heap */
+    D3D12_DESCRIPTOR_HEAP_DESC dsv_heap_desc;
+    dsv_heap_desc.NumDescriptors = 1;
+    dsv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    dsv_heap_desc.NodeMask = 0;
+    TIF(device->CreateDescriptorHeap(&dsv_heap_desc, IID_PPV_ARGS(dsv_heap.GetAddressOf())));
+
+    /* Create Depth Stencil Buffer */
+    D3D12_CLEAR_VALUE opt_clear;
+    opt_clear.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    opt_clear.DepthStencil.Depth = 1;
+    opt_clear.DepthStencil.Stencil = 0;
+
+    TIF(device->CreateCommittedResource(
+        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+        D3D12_HEAP_FLAG_NONE,
+        &CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D24_UNORM_S8_UINT, vizualizer_window_client_width, vizualizer_window_client_height, 1, 1, 4, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
+        D3D12_RESOURCE_STATE_DEPTH_WRITE,
+        &opt_clear,
+        IID_PPV_ARGS(depth_stencil_buffer.GetAddressOf())));
+
+    // Create descriptor to mip level 0 of entire resource using the format of the resource.
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc{};
+    dsv_desc.Flags = D3D12_DSV_FLAG_NONE;
+    dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+    dsv_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dsv_desc.Texture2D.MipSlice = 0;
+    device->CreateDepthStencilView(depth_stencil_buffer.Get(), &dsv_desc, dsv_heap->GetCPUDescriptorHandleForHeapStart());
+
+    /* Set Viewport and Scissor Rect*/
+    viewport.TopLeftX = 0;
+    viewport.TopLeftY = 0;
+    viewport.Width = vizualizer_window_client_width;
+    viewport.Height = vizualizer_window_client_height;
+    viewport.MinDepth = D3D12_MIN_DEPTH;
+    viewport.MaxDepth = D3D12_MAX_DEPTH;
+
+    scissor_rect.left = 0;
+    scissor_rect.top = 0;
+    scissor_rect.right = vizualizer_window_client_width;
+    scissor_rect.bottom = vizualizer_window_client_height;
+
 }
 
 XMFLOAT4X4 App::GetIdentity4x4() {
@@ -559,6 +726,11 @@ void RecreateTransformedObjectIndexBuffersFor(vector<uint32_t> indicies) {
 }
 
 void App::RecreateTransformObjectConstantBuffersFor(vector<TransformationData>) {
+
+}
+
+void App::InitCamera() {
+
 
 }
 

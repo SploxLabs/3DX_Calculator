@@ -1,5 +1,6 @@
 #pragma once
 #include "pch.h"
+#include "HrDebugger.h"
 #include "OrbitCamera.h"
 using namespace std;
 using namespace DirectX;
@@ -111,9 +112,10 @@ private:
 		/* Settings */
 		D3D_FEATURE_LEVEL minimum_feature_level = D3D_FEATURE_LEVEL_11_0; //accepting dx11 and more capable cards
 		static const UINT frame_buffer_count = 2; //2-double_buffering 3-triple_buffering, i'm hoping that moving from 3 to 2 will cut our memory usage by a third!
-
+		float background_color[4] = { 0,0,0,1 };
 		/* Device and Device Specifics */
 		void InitDeviceAndCoreObjs();
+		ComPtr<IDXGIFactory5> factory;
 		ComPtr<ID3D12Device> device;
 		UINT rtv_inc_size;
 		UINT cbv_srv_uav_inc_size;
@@ -165,6 +167,7 @@ private:
 		void*							transformed_object_constant_data_begins[frame_buffer_count];
 		
 		/* Camera */
+		void InitCamera();
 		OrbitCamera camera;
 		struct CameraData {
 			XMFLOAT4X4 matrix;
