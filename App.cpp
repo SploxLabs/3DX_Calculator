@@ -477,6 +477,7 @@ void App::CreateCalculatorWindowElements() {
 
     /* point selection and reapply settings buttons */
     {
+
         DestroyWindow(select_point1_button);
         select_point1_button = CreateWindowEx(NULL, L"BUTTON", L"Select Point 1", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
             current_horizontal_offset + horizontal_spacing, current_vertical_offset + vertical_spacing, 
@@ -516,37 +517,71 @@ void App::CreateCalculatorWindowElements() {
 }
 
 void App::InitDX12() {
+    InitDeviceAndCoreObjs();
+    InitSwapChain();
+    InitTransformedObjectPipeline();
+
+    vector<XMFLOAT3> test_triangle_verts = {
+        {0,0,0},
+        {0,1,0},
+        {1,1,0}
+    };
+    vector<uint32_t> test_triangle_indicies = {
+        0,1,2
+    };
+    TransformationData test_triangle_transformation_data;
+    test_triangle_transformation_data.matrix = GetIdentity4x4();
+    vector<TransformationData> test_triangle_transformation_datas = { test_triangle_transformation_data };
+
+    RecreateTransformedObjectVertexBuffersFor(test_triangle_verts);
+    RecreateTransformedObjectIndexBuffersFor(test_triangle_indicies);
+    RecreateTransformObjectConstantBuffersFor(test_triangle_transformation_datas);
 
 }
 
-void App::OnMouseMove(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam)
-{
+void App::InitDeviceAndCoreObjs() {
 }
 
-void App::OnLMouseDown(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam)
-{
+XMFLOAT4X4 App::GetIdentity4x4() {
+    return XMFLOAT4X4(
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-void App::OnLMouseUp(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam)
-{
+void App::RecreateTransformedObjectVertexBuffersFor(vector<XMFLOAT3> verts) {
+
 }
 
-void App::OnRMouseDown(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam)
-{
+void RecreateTransformedObjectIndexBuffersFor(vector<uint32_t> indicies) {
+
 }
 
-void App::OnRMouseUp(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam)
-{
+void App::RecreateTransformObjectConstantBuffersFor(vector<TransformationData>) {
+
 }
 
-void App::OnMMouseDown(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam)
-{
+void App::OnMouseMove(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
 }
 
-void App::OnMMouseUp(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam)
-{
+void App::OnLMouseDown(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
 }
 
-void App::OnMouseScroll(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam)
-{
+void App::OnLMouseUp(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+}
+
+void App::OnRMouseDown(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+}
+
+void App::OnRMouseUp(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+}
+
+void App::OnMMouseDown(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+}
+
+void App::OnMMouseUp(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+}
+
+void App::OnMouseScroll(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
 }

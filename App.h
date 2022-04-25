@@ -1,5 +1,10 @@
 #pragma once
 #include "pch.h"
+#include "OrbitCamera.h"
+using namespace std;
+using namespace DirectX;
+using Microsoft::WRL::ComPtr;
+
 class App {
 public:
 	App();
@@ -103,6 +108,74 @@ private:
 
 #pragma region DirectX12
 		void InitDX12();
+		/* Settings */
+		D3D_FEATURE_LEVEL minimum_feature_level = D3D_FEATURE_LEVEL_11_0; //accepting dx11 and more capable cards
+		static const UINT frame_buffer_count = 2; //2-double_buffering 3-triple_buffering, i'm hoping that moving from 3 to 2 will cut our memory usage by a third!
+
+		/* Device and Device Specifics */
+		void InitDeviceAndCoreObjs();
+		ComPtr<ID3D12Device> device;
+		UINT rtv_inc_size;
+		UINT cbv_srv_uav_inc_size;
+		ComPtr<ID3D12CommandQueue> command_queue;
+
+		UINT current_frame_index;
+		ComPtr<ID3D12Fence> fence;
+		UINT64 fence_values[frame_buffer_count];
+		HANDLE fence_event;
+
+		/* Swap Chain */
+		void InitSwapChain();
+		ComPtr<IDXGISwapChain3> swap_chain;
+		ComPtr<ID3D12DescriptorHeap> rtv_heap;
+		ComPtr<ID3D12DescriptorHeap> dsv_heap;
+		ComPtr<ID3D12Resource> back_buffers[frame_buffer_count];
+		ComPtr<ID3D12Resource> msaa_back_buffers[frame_buffer_count];
+		ComPtr<ID3D12Resource> depth_stencil_buffer;
+		D3D12_VIEWPORT viewport;
+		D3D12_RECT scissor_rect;
+
+		/* Transformed Indexed Triangle Object Pipeline */
+		void InitTransformedObjectPipeline();
+		ComPtr<ID3D12GraphicsCommandList>	transformed_object_pipeline_command_list;
+		ComPtr<ID3D12RootSignature>			transformed_object_root_signature;
+		ComPtr<ID3D12PipelineState>			transformed_object_opaque_pipeline_state;
+		ComPtr<ID3D12PipelineState>			transformed_object_wireframe_pipeline_state;
+
+		void RecreateTransformedObjectVertexBuffersFor(vector<XMFLOAT3> verts);
+		D3D12_VERTEX_BUFFER_VIEW	transformed_object_vertex_buffer_views[frame_buffer_count];
+		ComPtr<ID3D12Resource>		transformed_object_vertex_buffers[frame_buffer_count];
+		void*						transformed_object_vertex_data_begins[frame_buffer_count];
+
+		void RecreateTransformedObjectIndexBuffersFor(vector<uint32_t> indicies);
+		D3D12_INDEX_BUFFER_VIEW		transformed_object_index_buffer_views[frame_buffer_count];
+		ComPtr<ID3D12Resource>		transformed_object_index_buffers[frame_buffer_count];
+		void*						transformed_object_index_data_begins[frame_buffer_count];
+
+		struct TransformationData {
+			XMFLOAT4X4 matrix;
+			XMFLOAT4 color;
+			float padding[44]; //usable padding
+		};
+		static_assert((sizeof(TransformationData) % 256) == 0, "Constant Buffer item must be 256-byte aligned");
+
+		void RecreateTransformObjectConstantBuffersFor(vector<TransformationData> transformationdatas);
+		ComPtr<ID3D12DescriptorHeap>	transformed_object_cbv_heap;
+		ComPtr<ID3D12Resource>			transformed_object_constant_buffers[frame_buffer_count];
+		void*							transformed_object_constant_data_begins[frame_buffer_count];
+		
+		/* Camera */
+		OrbitCamera camera;
+		struct CameraData {
+			XMFLOAT4X4 matrix;
+			float padding[48]; //usable padding
+		};
+		static_assert((sizeof(TransformationData) % 256) == 0, "Constant Buffer item must be 256-byte aligned");
+		ComPtr<ID3D12DescriptorHeap>	camera_cbv_heap;
+		ComPtr<ID3D12Resource>			camera_data_buffers[frame_buffer_count];
+		void*							camera_data_begins[frame_buffer_count];
+
+		XMFLOAT4X4 GetIdentity4x4();
 #pragma endregion
 
 #pragma region Math

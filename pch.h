@@ -23,6 +23,6 @@
 #include<DirectXColors.h>
 #include<wrl.h>
 
-
+#include "d3dx12.h"
 
 #endif //PCH_H
