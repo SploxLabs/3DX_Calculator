@@ -24,7 +24,6 @@ int App::Start() {
         else {
             OnUpdate();
             OnRender();
-            Sleep(100);
         }
     }
     OnDestroy();
@@ -61,6 +60,35 @@ LRESULT App::OnCalculatorWindowEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, L
         }
         break;
     }
+
+#pragma region MenuAndButtonEvents
+    case WM_COMMAND: {
+        switch (LOWORD(t_wparam)) {
+        case ID_FILE_NEW:
+        case ID_FILE_OPEN:
+        case ID_FILE_SAVE:
+        case ID_FILE_SAVEAS:
+            //...
+            break;
+
+        case ID_SELECT_POINT1: {
+            SetCursor(LoadCursor(NULL, IDC_CROSS));
+            break;
+        }
+        case ID_SELECT_POINT2: {
+            SetCursor(LoadCursor(NULL, IDC_CROSS));
+            break;
+        }
+        case ID_REVALUATE: {
+            break;
+        }
+        break;
+        }
+        break;
+    }
+    //case WM_SETCURSOR: { return true; }
+
+#pragma endregion
         
     case WM_SIZE: {
         DefWindowProc(t_hwnd, t_msg, t_wparam, t_lparam);
@@ -82,6 +110,43 @@ LRESULT App::OnCalculatorWindowEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, L
 LRESULT App::OnVisualizerWindowEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
     switch (t_msg) {
 
+    #pragma region MouseEvents
+    case WM_MOUSEMOVE: {
+        OnMouseMove(t_hwnd, t_msg, t_wparam, t_lparam);
+        break;
+    }
+    case WM_LBUTTONDOWN: {
+        OnLMouseDown(t_hwnd, t_msg, t_wparam, t_lparam);
+        break;
+    }
+    case WM_LBUTTONUP: {
+        OnLMouseUp(t_hwnd, t_msg, t_wparam, t_lparam);
+        break;
+    }
+    case WM_RBUTTONDOWN: {
+        OnRMouseDown(t_hwnd, t_msg, t_wparam, t_lparam);
+        break;
+    }
+    case WM_RBUTTONUP: {
+        OnRMouseUp(t_hwnd, t_msg, t_wparam, t_lparam);
+        break;
+    }
+    case WM_MBUTTONDOWN: {
+        OnMMouseDown(t_hwnd, t_msg, t_wparam, t_lparam);
+        break;
+    }
+    case WM_MBUTTONUP: {
+        OnMMouseUp(t_hwnd, t_msg, t_wparam, t_lparam);
+        break;
+    }
+    case WM_MOUSEHWHEEL: {
+        OnMouseScroll(t_hwnd, t_msg, t_wparam, t_lparam);
+        break;
+    }
+    #pragma endregion
+
+
+
     case WM_SYSCOMMAND: {
         switch (t_wparam) {
         case SC_MINIMIZE:
@@ -99,24 +164,111 @@ LRESULT App::OnVisualizerWindowEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, L
     case WM_SIZE: {
         DefWindowProc(t_hwnd, t_msg, t_wparam, t_lparam);
         OnVizualizerWindowResize();
+        break;
     }
-
-
+    case WM_DESTROY: {
+        PostQuitMessage(0);
+        break;
+    }
     default:
         break;
     }
-    
-    
     return DefWindowProc(t_hwnd, t_msg, t_wparam, t_lparam);
 }
 
 void App::OnUpdate() {
+    camera_cpu_data.matrix = camera.GetViewProj();
+    memcpy(camera_data_begins[current_frame_index], &camera_cpu_data, sizeof(camera_cpu_data));
 }
 
 void App::OnRender() {
+    TIF(transformed_object_command_allocators[current_frame_index]->Reset());
+
+    if (use_wireframe) {
+        TIF(transformed_object_pipeline_command_list->Reset(transformed_object_command_allocators[frame_buffer_count].Get(), transformed_object_wireframe_pipeline_state.Get()));
+        
+    }
+    else {
+        TIF(transformed_object_pipeline_command_list->Reset(transformed_object_command_allocators[frame_buffer_count].Get(), transformed_object_opaque_pipeline_state.Get()));
+    }
+
+    transformed_object_pipeline_command_list->SetGraphicsRootSignature(transformed_object_root_signature.Get());
+
+    ID3D12DescriptorHeap* ppHeaps[] = { camera_cbv_heap.Get() };
+    transformed_object_pipeline_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+    CD3DX12_GPU_DESCRIPTOR_HANDLE camera_cbv_handle(camera_cbv_heap->GetGPUDescriptorHandleForHeapStart());
+    
+    camera_cbv_handle.Offset(current_frame_index, cbv_srv_uav_inc_size);
+    transformed_object_pipeline_command_list->SetGraphicsRootDescriptorTable(1, camera_cbv_handle);
+
+    ID3D12DescriptorHeap* object_heaps[] = { transformed_object_cbv_heap.Get() };
+    transformed_object_pipeline_command_list->SetDescriptorHeaps(_countof(object_heaps), object_heaps);
+
+    transformed_object_pipeline_command_list->RSSetViewports(1, &viewport);
+
+    transformed_object_pipeline_command_list->RSSetScissorRects(1, &scissor_rect);
+
+    transformed_object_pipeline_command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(msaa_back_buffers[current_frame_index].Get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+    transformed_object_pipeline_command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(back_buffers[current_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RESOLVE_DEST));
+
+
+    //command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(depth_stencil_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+    //line_command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(depth_stencil_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+    //object_command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(depth_stencil_buffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE msaa_rtv_handle(rtv_heap->GetCPUDescriptorHandleForHeapStart());
+    msaa_rtv_handle.Offset(current_frame_index, rtv_inc_size);
+
+
+    transformed_object_pipeline_command_list->OMSetRenderTargets(1, &msaa_rtv_handle, true, &dsv_heap->GetCPUDescriptorHandleForHeapStart());
+
+    FLOAT color[4] = { 0.f, 0.f, 0.f, 1.f };
+    transformed_object_pipeline_command_list->ClearRenderTargetView(msaa_rtv_handle, color, 0, nullptr);
+    transformed_object_pipeline_command_list->ClearDepthStencilView(dsv_heap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1, 0, 0, nullptr);
+    transformed_object_pipeline_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    CD3DX12_GPU_DESCRIPTOR_HANDLE object_cbv_handle(transformed_object_cbv_heap->GetGPUDescriptorHandleForHeapStart());
+    object_cbv_handle.Offset(current_frame_index, cbv_srv_uav_inc_size);
+    transformed_object_pipeline_command_list->SetGraphicsRootDescriptorTable(1, object_cbv_handle);
+    transformed_object_pipeline_command_list->IASetVertexBuffers(0, 1, &transformed_object_vertex_buffer_views[current_frame_index]);
+    transformed_object_pipeline_command_list->IASetIndexBuffer(&transformed_object_index_buffer_views[current_frame_index]);
+    transformed_object_pipeline_command_list->DrawIndexedInstanced(3, 1, 0, 0, 0);
+
+
+    transformed_object_pipeline_command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(msaa_back_buffers[current_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
+
+    transformed_object_pipeline_command_list->ResolveSubresource(back_buffers[current_frame_index].Get(), 0, msaa_back_buffers[current_frame_index].Get(), 0, DXGI_FORMAT_R8G8B8A8_UNORM);
+
+    transformed_object_pipeline_command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(back_buffers[current_frame_index].Get(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PRESENT));
+
+    transformed_object_pipeline_command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(depth_stencil_buffer.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COMMON));
+
+    TIF(transformed_object_pipeline_command_list->Close());
+
+    ID3D12CommandList* ppCommandLists[] = { transformed_object_pipeline_command_list.Get() };
+    command_queue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+    TIF(swap_chain->Present(1, 0));
+    //timer.Tick();
+    //m_frames_rendered++;
+
+    const UINT64 currentFenceValue = fence_values[current_frame_index];
+    TIF(command_queue->Signal(fence.Get(), currentFenceValue));
+    current_frame_index = swap_chain->GetCurrentBackBufferIndex();
+
+    if (fence->GetCompletedValue() < fence_values[current_frame_index])
+    {
+        TIF(fence->SetEventOnCompletion(fence_values[current_frame_index], fence_event)); //set fence point
+        WaitForSingleObjectEx(fence_event, INFINITE, FALSE); //wait till we hit the fence point
+    }
+    fence_values[current_frame_index] = currentFenceValue + 1;
 }
 
 void App::OnDestroy() {
+    FlushCommandQueue();
+    swap_chain->SetFullscreenState(false, nullptr);
+    CloseHandle(fence_event);
 }
 
 LRESULT App::CallOnCalculatorWindowEvent(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
@@ -521,10 +673,10 @@ void App::InitDX12() {
     InitSwapChain();
     InitTransformedObjectPipeline();
 
-    vector<XMFLOAT3> test_triangle_verts = {
-        {0,0,0},
-        {0,1,0},
-        {1,1,0}
+    vector<VertexC> test_triangle_verts = {
+        {{0,0,0},{1,1,1,1}},
+        {{0,1,0},{1,1,1,1}},
+        {{1,1,0},{1,1,1,1}}
     };
     vector<uint32_t> test_triangle_indicies = {
         0,1,2
@@ -580,6 +732,14 @@ void App::InitDeviceAndCoreObjs() {
     command_queue_desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
     TIF(device->CreateCommandQueue(&command_queue_desc, IID_PPV_ARGS(&command_queue)));
 
+}
+
+void App::FlushCommandQueue() {
+    TIF(command_queue->Signal(fence.Get(), fence_values[current_frame_index]));
+
+    TIF(fence->SetEventOnCompletion(fence_values[current_frame_index], fence_event)); //set fence point
+    WaitForSingleObjectEx(fence_event, INFINITE, FALSE); //wait till we hit the fence point
+    fence_values[current_frame_index]++;
 }
 
 void App::InitSwapChain() {
@@ -664,7 +824,7 @@ void App::InitSwapChain() {
     }
 
     /* Create Depth Stencil Resources */
-    /* Create Depth Stencil View Heap */
+    //Create Depth Stencil View Heap
     D3D12_DESCRIPTOR_HEAP_DESC dsv_heap_desc;
     dsv_heap_desc.NumDescriptors = 1;
     dsv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
@@ -672,7 +832,7 @@ void App::InitSwapChain() {
     dsv_heap_desc.NodeMask = 0;
     TIF(device->CreateDescriptorHeap(&dsv_heap_desc, IID_PPV_ARGS(dsv_heap.GetAddressOf())));
 
-    /* Create Depth Stencil Buffer */
+    //Create Depth Stencil Buffer
     D3D12_CLEAR_VALUE opt_clear;
     opt_clear.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     opt_clear.DepthStencil.Depth = 1;
@@ -709,6 +869,89 @@ void App::InitSwapChain() {
 
 }
 
+void App::InitTransformedObjectPipeline() {
+    /* Create Root Signature */
+    CD3DX12_DESCRIPTOR_RANGE camera_matrix_desc_range;
+    camera_matrix_desc_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+    CD3DX12_DESCRIPTOR_RANGE object_matrix_desc_range;
+    object_matrix_desc_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
+
+    CD3DX12_ROOT_PARAMETER slot_root_params[2];
+    slot_root_params[0].InitAsDescriptorTable(1, &camera_matrix_desc_range);
+    slot_root_params[1].InitAsDescriptorTable(1, &object_matrix_desc_range);
+
+    CD3DX12_ROOT_SIGNATURE_DESC root_signature_desc(2, slot_root_params, 0, nullptr,
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+    ComPtr<ID3DBlob> serialized_root_signature;
+    ComPtr<ID3DBlob> error_blob;
+    HRESULT hr = D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1,
+        serialized_root_signature.GetAddressOf(), error_blob.GetAddressOf());
+
+    if (error_blob != nullptr) {
+        OutputDebugStringA((char*)error_blob->GetBufferPointer());
+    }
+    TIF(hr);
+    
+    TIF(device->CreateRootSignature(
+        0,
+        serialized_root_signature->GetBufferPointer(),
+        serialized_root_signature->GetBufferSize(),
+        IID_PPV_ARGS(transformed_object_root_signature.GetAddressOf())));
+
+    /* Compile Shaders */
+    ComPtr<ID3DBlob> vertex_shader;
+    ComPtr<ID3DBlob> pixel_shader;
+#if defined(_DEBUG)
+    // Enable better shader debugging with the graphics debugging tools.
+    UINT compile_flags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+    UINT compile_flags = 0;
+#endif
+    TIF(D3DCompileFromFile(L"color_object.hlsl", nullptr, nullptr, "VS", "vs_5_0", compile_flags, 0, &vertex_shader, nullptr));
+    TIF(D3DCompileFromFile(L"color_object.hlsl", nullptr, nullptr, "PS", "ps_5_0", compile_flags, 0, &pixel_shader, nullptr));
+
+    D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    // Describe and create the graphics pipeline state object (PSO).
+    {
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
+        pso_desc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
+        pso_desc.pRootSignature = transformed_object_root_signature.Get();
+        pso_desc.VS.pShaderBytecode = vertex_shader->GetBufferPointer();
+        pso_desc.VS.BytecodeLength = vertex_shader->GetBufferSize();
+        pso_desc.PS.pShaderBytecode = pixel_shader->GetBufferPointer();
+        pso_desc.PS.BytecodeLength = pixel_shader->GetBufferSize();
+        pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        pso_desc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+        pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);;
+        pso_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        pso_desc.SampleMask = UINT_MAX;
+        pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        pso_desc.NumRenderTargets = 1;
+        pso_desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        pso_desc.SampleDesc.Count = 4;
+        pso_desc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        TIF(device->CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&transformed_object_opaque_pipeline_state)));
+        pso_desc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+        TIF(device->CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&transformed_object_wireframe_pipeline_state)));
+
+    }
+
+    /* Create Command Allocators */
+    for (int i = 0; i < frame_buffer_count; i++) {
+        TIF(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&transformed_object_command_allocators[i])));
+    }
+
+    /* Create Command List */
+    TIF(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, transformed_object_command_allocators[current_frame_index].Get(), transformed_object_opaque_pipeline_state.Get(), IID_PPV_ARGS(&transformed_object_pipeline_command_list)));
+    transformed_object_pipeline_command_list->Close();
+}
+
 XMFLOAT4X4 App::GetIdentity4x4() {
     return XMFLOAT4X4(
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -717,43 +960,189 @@ XMFLOAT4X4 App::GetIdentity4x4() {
         0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-void App::RecreateTransformedObjectVertexBuffersFor(vector<XMFLOAT3> verts) {
+void App::RecreateTransformedObjectVertexBuffersFor(const vector<VertexC>& verts) {
+    UINT size = verts.size() * sizeof(verts[0]);
 
+    for (int i = 0; i < frame_buffer_count; i++) {
+        if (transformed_object_vertex_buffers[i]) {
+            transformed_object_vertex_buffers[i]->Unmap(0, NULL);
+            transformed_object_vertex_data_begins[i] = nullptr;
+            transformed_object_vertex_buffers[i].Reset();
+            transformed_object_vertex_buffers[i] = nullptr;
+
+            TIF(device->CreateCommittedResource(
+                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+                D3D12_HEAP_FLAG_NONE,
+                &CD3DX12_RESOURCE_DESC::Buffer(size),
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(&transformed_object_vertex_buffers[i])));
+
+            D3D12_RANGE read_range;
+            read_range.Begin = 0;
+            read_range.End = 0;
+
+            TIF(transformed_object_vertex_buffers[i]->Map(0, &read_range, &transformed_object_vertex_data_begins[i]));
+
+            memcpy(transformed_object_vertex_data_begins[i], verts.data(), size);
+
+            transformed_object_vertex_buffer_views[i].BufferLocation = transformed_object_vertex_buffers[i]->GetGPUVirtualAddress();
+            transformed_object_vertex_buffer_views[i].SizeInBytes = size;
+            transformed_object_vertex_buffer_views[i].StrideInBytes = sizeof(VertexC);
+
+        }
+    }
 }
 
-void RecreateTransformedObjectIndexBuffersFor(vector<uint32_t> indicies) {
+void App::RecreateTransformedObjectIndexBuffersFor(const vector<uint32_t>& indicies) {
+    FlushCommandQueue();
 
+    UINT size = indicies.size() * sizeof(indicies[0]);
+
+    for (int i = 0; i < frame_buffer_count; i++) {
+        if (transformed_object_index_buffers[i]) {
+            transformed_object_index_buffers[i]->Unmap(0, NULL);
+            transformed_object_index_data_begins[i] = nullptr;
+            transformed_object_index_buffers[i].Reset();
+        }
+        TIF(device->CreateCommittedResource(
+             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+             D3D12_HEAP_FLAG_NONE,
+             &CD3DX12_RESOURCE_DESC::Buffer(size),
+             D3D12_RESOURCE_STATE_GENERIC_READ,
+             nullptr,
+             IID_PPV_ARGS(&transformed_object_index_buffers[i])));
+
+         D3D12_RANGE read_range;
+         read_range.Begin = 0;
+         read_range.End = 0;
+
+         TIF(transformed_object_index_buffers[i]->Map(0, &read_range, &transformed_object_index_data_begins[i]));
+
+         memcpy(transformed_object_index_data_begins[i], indicies.data(), size);
+
+         transformed_object_index_buffer_views[i].BufferLocation = transformed_object_index_buffers[i]->GetGPUVirtualAddress();
+         transformed_object_index_buffer_views[i].SizeInBytes = size;
+        
+    }
 }
 
-void App::RecreateTransformObjectConstantBuffersFor(vector<TransformationData>) {
+void App::RecreateTransformObjectConstantBuffersFor(const vector<TransformationData>& transformationdata) {
+    if (transformed_object_cbv_heap) {
+        transformed_object_cbv_heap.Reset();
+    }
+    D3D12_DESCRIPTOR_HEAP_DESC object_cbv_heap_desc;
+    object_cbv_heap_desc.NumDescriptors = frame_buffer_count * transformationdata.size(); //correct
+    object_cbv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    object_cbv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    object_cbv_heap_desc.NodeMask = 0;
+    TIF(device->CreateDescriptorHeap(&object_cbv_heap_desc, IID_PPV_ARGS(&transformed_object_cbv_heap)));
 
+    UINT buffer_size = transformationdata.size() * sizeof(TransformationData);
+
+    D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_view_desc;
+    CD3DX12_CPU_DESCRIPTOR_HANDLE cbv_handle(transformed_object_cbv_heap->GetCPUDescriptorHandleForHeapStart());
+    for (int i = 0; i < frame_buffer_count; i++) {
+        
+        if (transformed_object_constant_buffers[i]) {
+            transformed_object_constant_buffers[i]->Unmap(0, NULL);
+            transformed_object_constant_data_begins[i] = nullptr;
+            transformed_object_constant_buffers[i].Reset();
+        }
+        
+        TIF(device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(buffer_size),
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&transformed_object_constant_buffers[i])));
+
+        D3D12_RANGE read_range{ 0,0 };
+        TIF(transformed_object_constant_buffers[i]->Map(0, &read_range, &transformed_object_constant_data_begins[i]));
+
+        for (int j = 0; j < transformationdata.size(); j++) {
+            D3D12_GPU_VIRTUAL_ADDRESS cbaddress = transformed_object_constant_buffers[i]->GetGPUVirtualAddress();
+            cbv_view_desc.BufferLocation = cbaddress + (j * sizeof(TransformationData));
+            cbv_view_desc.SizeInBytes = sizeof(TransformationData);
+
+            device->CreateConstantBufferView(&cbv_view_desc, cbv_handle);
+            cbv_handle.Offset(1, cbv_srv_uav_inc_size);
+        }
+    }
 }
 
 void App::InitCamera() {
+    RECT visualizer_window_client_rect;
+    GetClientRect(visualizer_window, &visualizer_window_client_rect);
+    UINT visualizer_window_client_width = visualizer_window_client_rect.right - visualizer_window_client_rect.left;
+    UINT visualizer_window_client_height = visualizer_window_client_rect.bottom - visualizer_window_client_rect.top;
 
+    camera.SetWidth(2.0f);
+    camera.SetAspectRatio(visualizer_window_client_width / (float)visualizer_window_client_height);
+    camera.SetPos({ 0.f, 0.f, -1.f });
+
+    /* Create CBV desc heap */
+    D3D12_DESCRIPTOR_HEAP_DESC camera_cbv_heap_desc;
+    camera_cbv_heap_desc.NumDescriptors = frame_buffer_count;
+    camera_cbv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    camera_cbv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    camera_cbv_heap_desc.NodeMask = 0;
+    TIF(device->CreateDescriptorHeap(&camera_cbv_heap_desc, IID_PPV_ARGS(&camera_cbv_heap)));
+    
+    /* Create Resources, Copy Data To Them, and Store CBV's in the CBV buffer */
+    UINT camera_data_buffers_size = sizeof(CameraData);
+    D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_view_desc;
+    CD3DX12_CPU_DESCRIPTOR_HANDLE cbv_handle(camera_cbv_heap->GetCPUDescriptorHandleForHeapStart());
+    for (int i = 0; i < frame_buffer_count; i++) {
+        TIF(device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(camera_data_buffers_size),
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&camera_data_buffers[i])));
+
+        D3D12_RANGE read_range{ 0,0 };
+        TIF(camera_data_buffers[i]->Map(0, &read_range, reinterpret_cast<void**>(&camera_data_begins[i])));
+        memcpy(camera_data_begins[i], &camera_cpu_data, sizeof(camera_cpu_data));
+
+        cbv_view_desc.BufferLocation = camera_data_buffers[i]->GetGPUVirtualAddress();
+        cbv_view_desc.SizeInBytes = camera_data_buffers_size;
+
+        device->CreateConstantBufferView(&cbv_view_desc, cbv_handle);
+        cbv_handle.Offset(1, cbv_srv_uav_inc_size);
+    }
 
 }
 
 void App::OnMouseMove(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+    camera.OnMouseMove(t_wparam);
 }
 
 void App::OnLMouseDown(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+    camera.OnMouseDown(t_wparam);
 }
 
 void App::OnLMouseUp(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+    camera.OnMouseUp(t_wparam);
 }
 
 void App::OnRMouseDown(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+    camera.OnMouseDown(t_wparam);
 }
 
 void App::OnRMouseUp(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+    camera.OnMouseUp(t_wparam);
 }
 
 void App::OnMMouseDown(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+
 }
 
 void App::OnMMouseUp(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
 }
 
 void App::OnMouseScroll(HWND t_hwnd, UINT t_msg, WPARAM t_wparam, LPARAM t_lparam) {
+
 }

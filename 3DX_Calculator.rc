@@ -54,9 +54,9 @@ IDR_MENU1 MENU
 BEGIN
     POPUP "File"
     BEGIN
-        MENUITEM "New",                         ID_FILE_OPENFILE
-        MENUITEM "Open",                        ID_FILE_SAVE
-        MENUITEM "Save",                        ID_FILE_SAVE40003
+        MENUITEM "New",                         ID_FILE_NEW
+        MENUITEM "Open",                        ID_FILE_OPEN
+        MENUITEM "Save",                        ID_FILE_SAVE
         MENUITEM "Save As",                     ID_FILE_SAVEAS
     END
     POPUP "Analysis"

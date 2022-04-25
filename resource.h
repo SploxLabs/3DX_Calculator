@@ -24,17 +24,18 @@
 #define ID_HELP_HOTKEYS                 40019
 #define ID_DEMO_STRESSTEST              40020
 #define ID_DEMO_ANIMATIONS              40021
-
+#define ID_FILE_OPEN                    40022
+#define ID_FILE_NEW                     40023
 #define ID_SELECT_POINT1                41000
 #define ID_SELECT_POINT2                41001
-#define ID_REVALUATE		            41002
+#define ID_REVALUATE                    41002
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        102
-#define _APS_NEXT_COMMAND_VALUE         40022
+#define _APS_NEXT_COMMAND_VALUE         40024
 #define _APS_NEXT_CONTROL_VALUE         1001
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
